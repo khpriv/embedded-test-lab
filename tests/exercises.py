@@ -1,38 +1,82 @@
+from typing import Protocol
+from transports import SimulatorTransport
+
+
+class Transport(Protocol):
+    def send(self, command: str) -> str:
+        pass
 
 class Device:
-    def __init__(self):
-        self.temperature = 20
-        self.limit = 80
-        self.status = 'READY'
+    def __init__(self, transport: Transport) -> None:
+        self.transport = transport
 
-    def reset(self):
-        self.__init__()
+    def reset(self) -> None:
+        response = self.transport.send("RESET")
+
+        if response != "OK":
+            raise RuntimeError(f"Reset failed: {response}")
 
     def get_temperature(self) -> int:
-        return self.temperature
+        try:
+            parameter, value = parse_response(self.transport.send("GET_TEMP"))
+        except ValueError:
+            raise RuntimeError(f"Incorrect response")
 
-    def set_temperature(self, new_temperature: int):
-        if new_temperature > self.limit:
-            raise ValueError
+        if parameter == "TEMP":
+            return int(value)
         else:
-            self.temperature = new_temperature
+            raise RuntimeError(f"Expected TEMP response, got {parameter}:{value} instead")
+
+    def set_temperature(self, new_temperature: int) -> None:
+        response = self.transport.send(f"SET_TEMP:{new_temperature}")
+        if response == "OK":
+            return
+        elif response == "ERR:OUT_OF_RANGE":
+            raise ValueError(f"Failed to set temperature. {new_temperature} is out of range.")
+        else:
+            raise RuntimeError(f"Failed to set temperature: {response}")
 
     def get_status(self) -> str:
-        return self.status
+        try:
+            parameter, value = parse_response(self.transport.send("GET_STATUS"))
+        except ValueError:
+            raise RuntimeError(f"Incorrect response")
 
-    def set_status(self, new_status: str):
-        self.status = new_status
+        if parameter == "STATUS":
+            return value
+        else:
+            raise RuntimeError(f"Expected STATUS response, got {parameter}:{value} instead")
 
-    def get_limit(self):
-        return self.limit
+    def set_status(self, new_status: str) -> None:
+        response = self.transport.send(f"SET_STATUS:{new_status}")
 
-    def set_limit(self, new_limit: int):
-        self.limit = new_limit
+        if response != "OK":
+            raise RuntimeError(f"Failed to set status: {response}")
+
+    def get_limit(self) -> int:
+        try:
+            parameter, value = parse_response(self.transport.send("GET_LIMIT"))
+        except ValueError:
+            raise RuntimeError(f"Incorrect response")
+
+        if parameter == "LIMIT":
+            return int(value)
+        else:
+            raise RuntimeError(f"Expected LIMIT response, got {parameter}:{value} instead")
+
+    def set_limit(self, new_limit: int) -> None:
+        response = self.transport.send(f"SET_LIMIT:{new_limit}")
+
+        if response != "OK":
+            raise RuntimeError(f"Failed to set limit: {response}")
 
 
-def parse_response (response: str):
-    parameter, value = response.replace(" ", "").split(":")
-    if len(parameter) == 0 or  len(value) == 0:
+def parse_response (response: str) -> tuple[str, str]:
+    parameter, value = response.split(":")
+    parameter = parameter.strip()
+    value = value.strip()
+
+    if not parameter or not value:
         raise ValueError
     return parameter, value
 
@@ -40,12 +84,11 @@ def parse_response (response: str):
 if __name__ == '__main__':
     print(parse_response("       TEMP:  25    "))
     print(parse_response("STATUS:READY"))
-    device = Device()
 
-    device.get_temperature()
-
-    device.set_temperature(35)
-
-    device.get_temperature()
-    device.reset()
-    device.get_temperature()
+    transport = SimulatorTransport()
+    device = Device(transport)
+    print(device.get_temperature())
+    print(device.set_temperature(35))
+    print(device.get_temperature())
+    print(device.reset())
+    print(device.get_temperature())
