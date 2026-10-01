@@ -2,73 +2,91 @@ from typing import Protocol
 from transports import SimulatorTransport
 
 
+class DeviceProtocolError(RuntimeError):
+    pass
+
+
 class Transport(Protocol):
     def send(self, command: str) -> str:
-        pass
+        ...
+
 
 class Device:
     def __init__(self, transport: Transport) -> None:
         self.transport = transport
 
     def reset(self) -> None:
-        response = self.transport.send("RESET")
+        self._expect_ok("RESET")
 
-        if response != "OK":
-            raise RuntimeError(f"Reset failed: {response}")
 
     def get_temperature(self) -> int:
-        try:
-            parameter, value = parse_response(self.transport.send("GET_TEMP"))
-        except ValueError:
-            raise RuntimeError(f"Incorrect response")
+        value = self._get_value("GET_TEMP", "TEMP")
 
-        if parameter == "TEMP":
+        try:
             return int(value)
-        else:
-            raise RuntimeError(f"Expected TEMP response, got {parameter}:{value} instead")
+        except ValueError as exc:
+            raise DeviceProtocolError(
+                f"Invalid TEMP value: {value!r}"
+            ) from exc
+
 
     def set_temperature(self, new_temperature: int) -> None:
         response = self.transport.send(f"SET_TEMP:{new_temperature}")
+
         if response == "OK":
             return
-        elif response == "ERR:OUT_OF_RANGE":
+
+        if response == "ERR:OUT_OF_RANGE":
             raise ValueError(f"Failed to set temperature. {new_temperature} is out of range.")
-        else:
-            raise RuntimeError(f"Failed to set temperature: {response}")
+        
+        raise RuntimeError(f"Failed to set temperature: {response}")
+
 
     def get_status(self) -> str:
-        try:
-            parameter, value = parse_response(self.transport.send("GET_STATUS"))
-        except ValueError:
-            raise RuntimeError(f"Incorrect response")
+        value = self._get_value("GET_STATUS", "STATUS")
+        return value
 
-        if parameter == "STATUS":
-            return value
-        else:
-            raise RuntimeError(f"Expected STATUS response, got {parameter}:{value} instead")
 
     def set_status(self, new_status: str) -> None:
-        response = self.transport.send(f"SET_STATUS:{new_status}")
+        self._expect_ok(f"SET_STATUS:{new_status}")
 
-        if response != "OK":
-            raise RuntimeError(f"Failed to set status: {response}")
 
     def get_limit(self) -> int:
-        try:
-            parameter, value = parse_response(self.transport.send("GET_LIMIT"))
-        except ValueError:
-            raise RuntimeError(f"Incorrect response")
+        value = self._get_value("GET_LIMIT", "LIMIT")
 
-        if parameter == "LIMIT":
+        try:
             return int(value)
-        else:
-            raise RuntimeError(f"Expected LIMIT response, got {parameter}:{value} instead")
+        except ValueError as exc:
+            raise DeviceProtocolError(
+                f"Invalid LIMIT value: {value!r}"
+            ) from exc
+
 
     def set_limit(self, new_limit: int) -> None:
-        response = self.transport.send(f"SET_LIMIT:{new_limit}")
+        self._expect_ok(f"SET_LIMIT:{new_limit}")
 
+
+    def _get_value(self, command: str, expected_parameter: str) -> str:
+        response = self.transport.send(f"{command}")
+
+        try:
+            parameter, value = parse_response(response)
+        except ValueError as exc:
+            raise DeviceProtocolError(
+                f"Malformed response to {command}: {response!r}"
+            ) from exc
+
+        if parameter != f"{expected_parameter}":
+            raise DeviceProtocolError(
+                f"Expected {command} response, got {response!r}"
+            )
+        return value
+
+
+    def _expect_ok(self, command: str) -> None:
+        response = self.transport.send(f"{command}")
         if response != "OK":
-            raise RuntimeError(f"Failed to set limit: {response}")
+            raise RuntimeError(f"Failed to {command}: {response}")
 
 
 def parse_response (response: str) -> tuple[str, str]:
