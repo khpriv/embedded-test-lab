@@ -1,6 +1,6 @@
 import pytest
 from exercises import Device
-from transports import SimulatorTransport, FakeTransport
+from src.transports import SimulatorTransport, FakeTransport
 
 def test_default_temperature():
     device = Device(SimulatorTransport())
