@@ -1,5 +1,5 @@
 import pytest
-from src.transports import SimulatorTransport
+from embedded_test_lab.transports import SimulatorTransport
 
 
 @pytest.mark.parametrize(
@@ -28,6 +28,7 @@ def test_default_temperature():
     transport = SimulatorTransport()
     assert transport.send("GET_TEMP") == "TEMP:20"
 
+
 # setting temperature works
 def test_temperature_can_be_changed():
     transport = SimulatorTransport()
@@ -36,11 +37,13 @@ def test_temperature_can_be_changed():
     assert transport.send(f"SET_TEMP:{temperature}") == "OK"
     assert transport.send("GET_TEMP") == f"TEMP:{temperature}"
 
+
 # too-high temperature is rejected
 def test_temperature_over_limit_is_rejected():
     transport = SimulatorTransport()
     temperature = 100
     assert transport.send(f"SET_TEMP:{temperature}") == "ERR:OUT_OF_RANGE"
+
 
 # rejected change preserves old state
 def test_failed_temperature_change_doesnt_change_temperature():
@@ -50,10 +53,12 @@ def test_failed_temperature_change_doesnt_change_temperature():
     assert transport.send(f"SET_TEMP:{temperature}") == "ERR:OUT_OF_RANGE"
     assert transport.send("GET_TEMP") == "TEMP:20"
 
+
 # unknown command returns error
 def test_unknown_command():
     transport = SimulatorTransport()
     assert transport.send("INVALID_COMMAND") == "ERR:UNKNOWN_COMMAND"
+
 
 # reset restores defaults
 def test_reset_restores_defaults():
@@ -77,6 +82,7 @@ def test_reset_restores_defaults():
     assert transport.send("GET_LIMIT") == "LIMIT:80"
     assert transport.send("GET_STATUS") == "STATUS:READY"
 
+
 def test_temperature_can_be_set_after_limit_change():
     transport = SimulatorTransport()
 
@@ -84,15 +90,18 @@ def test_temperature_can_be_set_after_limit_change():
     assert transport.send("SET_TEMP:90") == "OK"
     assert transport.send("GET_TEMP") == "TEMP:90"
 
+
 def test_temperature_invalid_value():
     transport = SimulatorTransport()
 
     assert transport.send("SET_TEMP:apple") == "ERR:INVALID_VALUE"
 
+
 def test_limit_invalid_value():
     transport = SimulatorTransport()
 
     assert transport.send("SET_LIMIT:apple") == "ERR:INVALID_VALUE"
+
 
 def test_invalid_command():
     transport = SimulatorTransport()

@@ -1,4 +1,9 @@
 from typing import Protocol
+import logging
+from collections.abc import Callable
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class Transport(Protocol):
@@ -7,11 +12,51 @@ class Transport(Protocol):
 
 
 class RetryingTransport:
-    def __init__(self, transport: Transport, retries = 3):
-        ...
+    def __init__(self,
+                 transport: Transport,
+                 retries: int = 3,
+                 retry_delay: float = 0.0,
+                 sleeper: Callable[[float], None] = time.sleep
+                 ) -> None:
+        self.transport = transport
+        self.retries = retries
+        self.retry_delay = retry_delay
+        self.sleeper = sleeper
 
     def send(self, command: str) -> str:
-        ...
+        for attempt in range(self.retries + 1):
+            try:
+                return self.transport.send(command)
+            except TimeoutError:
+                if attempt < self.retries:
+                    logger.warning(
+                        "Timeout sending %r, retrying in %.3f s",
+                        command,
+                        self.retry_delay,
+                    )
+                    self.sleeper(self.retry_delay)
+                if attempt == self.retries:
+                    logger.error(
+                        "Command %r timed out after %d attempts",
+                        command,
+                        self.retries + 1,
+                    )
+                    raise
+
+
+class FlakyTransport:
+    def __init__(self, transport: Transport, failures_before_success: int) -> None:
+        self.transport = transport
+        self.failures_before_success = failures_before_success
+        self.calls = 0
+
+    def send(self, command: str) -> str:
+        self.calls += 1
+
+        if self.calls <= self.failures_before_success:
+            raise TimeoutError("Simulated timeout")
+
+        return self.transport.send(command)
 
 
 class SimulatorTransport:
@@ -102,5 +147,3 @@ class FakeTransport:
     def send(self, command: str) -> str:
         self.last_command = command
         return self.response
-
-

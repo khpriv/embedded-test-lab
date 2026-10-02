@@ -1,5 +1,5 @@
 import pytest
-from exercises import parse_response
+from embedded_test_lab.protocol import parse_response
 
 
 def test_parser_response():
@@ -16,6 +16,7 @@ def test_parser_response():
     with pytest.raises(ValueError):
         parse_response("garbage")
 
+
 @pytest.mark.parametrize(
     "response, expected",
     [
@@ -26,6 +27,7 @@ def test_parser_response():
 )
 def test_valid_response(response, expected):
     assert parse_response(response) == expected
+
 
 # OR
 
@@ -45,6 +47,7 @@ def test_valid_response(response, expected):
 def test_valid_response(response, expected):
     assert parse_response(response) == expected
 
+
 @pytest.mark.parametrize(
     "response",
     [
@@ -58,4 +61,3 @@ def test_valid_response(response, expected):
 def test_invalid_response(response):
     with pytest.raises(ValueError):
         parse_response(response)
-

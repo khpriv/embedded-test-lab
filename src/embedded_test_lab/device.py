@@ -1,4 +1,5 @@
-from src.transports import Transport, SimulatorTransport
+from embedded_test_lab.transports import SimulatorTransport, Transport
+from embedded_test_lab.protocol import parse_response
 
 
 class DeviceProtocolError(RuntimeError):
@@ -12,7 +13,6 @@ class Device:
     def reset(self) -> None:
         self._expect_ok("RESET")
 
-
     def get_temperature(self) -> int:
         value = self._get_value("GET_TEMP", "TEMP")
 
@@ -22,7 +22,6 @@ class Device:
             raise DeviceProtocolError(
                 f"Invalid TEMP value: {value!r}"
             ) from exc
-
 
     def set_temperature(self, new_temperature: int) -> None:
         response = self.transport.send(f"SET_TEMP:{new_temperature}")
@@ -35,15 +34,12 @@ class Device:
 
         raise RuntimeError(f"Failed to set temperature: {response}")
 
-
     def get_status(self) -> str:
         value = self._get_value("GET_STATUS", "STATUS")
         return value
 
-
     def set_status(self, new_status: str) -> None:
         self._expect_ok(f"SET_STATUS:{new_status}")
-
 
     def get_limit(self) -> int:
         value = self._get_value("GET_LIMIT", "LIMIT")
@@ -55,10 +51,8 @@ class Device:
                 f"Invalid LIMIT value: {value!r}"
             ) from exc
 
-
     def set_limit(self, new_limit: int) -> None:
         self._expect_ok(f"SET_LIMIT:{new_limit}")
-
 
     def _get_value(self, command: str, expected_parameter: str) -> str:
         response = self.transport.send(f"{command}")
@@ -76,21 +70,10 @@ class Device:
             )
         return value
 
-
     def _expect_ok(self, command: str) -> None:
         response = self.transport.send(f"{command}")
         if response != "OK":
             raise RuntimeError(f"Failed to {command}: {response}")
-
-
-def parse_response (response: str) -> tuple[str, str]:
-    parameter, value = response.split(":")
-    parameter = parameter.strip()
-    value = value.strip()
-
-    if not parameter or not value:
-        raise ValueError
-    return parameter, value
 
 
 if __name__ == '__main__':
