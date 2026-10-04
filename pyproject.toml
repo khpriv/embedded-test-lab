@@ -12,3 +12,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "hardware: tests requiring a physical DUT"
+]
+

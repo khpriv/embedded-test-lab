@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 from embedded_test_lab.device import Device, DeviceProtocolError
-from embedded_test_lab.transports import (SimulatorTransport, FakeTransport, RetryingTransport, FlakyTransport)
+from embedded_test_lab.transports import (SimulatorTransport, SerialTransport, FakeTransport, RetryingTransport, FlakyTransport)
 import logging
 
 
@@ -21,11 +21,6 @@ def device_teardown():
     print("SETUP")
     yield device
     print("TEARDOWN")
-
-
-def test_intentional_failure(device_teardown):
-    device_teardown.set_temperature(40)
-    assert False
 
 
 def test_default_temperature(device):
@@ -207,3 +202,29 @@ def test_timeout_after_all_retries_via_mock(caplog):
         record.levelno == logging.ERROR
         for record in caplog.records
     )
+
+@pytest.mark.hardware
+def test_basic_device_smoke():
+    with SerialTransport("/dev/ttyACM0") as transport:
+        device = Device(transport)
+
+        device.reset()
+
+        assert device.get_temperature() == 20
+        assert device.get_limit() == 80
+        assert device.get_status() == "READY"
+
+        device.set_temperature(40)
+        assert device.get_temperature() == 40
+
+        device.set_limit(60)
+        assert device.get_limit() == 60
+
+        device.set_status("TESTING")
+        assert device.get_status() == "TESTING"
+
+        device.reset()
+
+        assert device.get_temperature() == 20
+        assert device.get_limit() == 80
+        assert device.get_status() == "READY"

@@ -2,6 +2,7 @@ from typing import Protocol
 import logging
 from collections.abc import Callable
 import time
+import serial
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +10,10 @@ logger = logging.getLogger(__name__)
 class Transport(Protocol):
     def send(self, command: str) -> str:
         ...
+
+
+class CommunicationError(RuntimeError):
+    pass
 
 
 class RetryingTransport:
@@ -44,19 +49,47 @@ class RetryingTransport:
                     raise
 
 
-class FlakyTransport:
-    def __init__(self, transport: Transport, failures_before_success: int) -> None:
-        self.transport = transport
-        self.failures_before_success = failures_before_success
-        self.calls = 0
+class SerialTransport:
+    def __init__(
+                    self,
+                    port: str,
+                    baudrate: int = 115200,
+                    timeout: float = 0.1,
+                ) -> None:
+        try:
+            self.serial = serial.Serial(
+                                        port=port,
+                                        baudrate=baudrate,
+                                        timeout=timeout,
+                                        write_timeout=timeout,
+                                        )
+        except serial.SerialException as exc:
+            raise CommunicationError(
+                f"Failed to open serial port {port!r}"
+            ) from exc
+
+        self.serial.reset_input_buffer()
+
+    def close(self) -> None:
+        if self.serial.is_open:
+            self.serial.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.close()
+
 
     def send(self, command: str) -> str:
-        self.calls += 1
-
-        if self.calls <= self.failures_before_success:
-            raise TimeoutError("Simulated timeout")
-
-        return self.transport.send(command)
+        command = command.strip()
+        self.serial.write((command + "\r\n").encode("ascii"))
+        response = self.serial.readline().decode("ascii").strip()
+        if response == b"":
+            raise TimeoutError(
+                f"No response to command {command!r}"
+            )
+        return response
 
 
 class SimulatorTransport:
@@ -115,7 +148,7 @@ class SimulatorTransport:
             new_temperature = int(new_temperature)
         except ValueError:
             return "ERR:INVALID_VALUE"
-        if new_temperature > self.limit:
+        if self.limit < new_temperature:
             return "ERR:OUT_OF_RANGE"
         else:
             self.temperature = new_temperature
@@ -147,3 +180,18 @@ class FakeTransport:
     def send(self, command: str) -> str:
         self.last_command = command
         return self.response
+
+
+class FlakyTransport:
+    def __init__(self, transport: Transport, failures_before_success: int) -> None:
+        self.transport = transport
+        self.failures_before_success = failures_before_success
+        self.calls = 0
+
+    def send(self, command: str) -> str:
+        self.calls += 1
+
+        if self.calls <= self.failures_before_success:
+            raise TimeoutError("Simulated timeout")
+
+        return self.transport.send(command)

@@ -1,5 +1,7 @@
 import pytest
-from embedded_test_lab.transports import SimulatorTransport
+import os
+
+from embedded_test_lab.transports import SimulatorTransport, SerialTransport
 
 
 @pytest.mark.parametrize(
@@ -107,3 +109,24 @@ def test_invalid_command():
     transport = SimulatorTransport()
 
     assert transport.send("SET_LIMIT:SET_TEMP:20") == "ERR:INVALID_COMMAND"
+
+
+@pytest.mark.hardware
+def test_basic_device_smoke():
+    port = os.getenv("DUT_PORT", "/dev/ttyACM0")
+
+    with SerialTransport(port) as transport:
+        assert transport.send("GET_TEMP") == "TEMP:20"
+        assert transport.send("SET_TEMP:40") == "OK"
+        assert transport.send("GET_TEMP") == "TEMP:40"
+        assert transport.send("GET_STATUS") == "STATUS:READY"
+        assert transport.send("SET_STATUS:TESTING") == "OK"
+        assert transport.send("GET_STATUS") == "STATUS:TESTING"
+        assert transport.send("GET_LIMIT") == "LIMIT:80"
+        assert transport.send("SET_LIMIT:100") == "OK"
+        assert transport.send("GET_LIMIT") == "LIMIT:100"
+
+        assert transport.send("RESET") == "OK"
+        assert transport.send("GET_TEMP") == "TEMP:20"
+        assert transport.send("GET_STATUS") == "STATUS:READY"
+        assert transport.send("GET_LIMIT") == "LIMIT:80"
