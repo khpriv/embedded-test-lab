@@ -5,7 +5,7 @@ from embedded_test_lab.protocol import parse_response
 def test_parser_response():
     assert parse_response("TEST:25") == ('TEST', '25')
     assert parse_response("    TEST:25     ") == ('TEST', '25')
-    assert parse_response("STATUS:NOT READY")
+    assert parse_response("STATUS:NOT_READY") == ('STATUS', 'NOT_READY')
 
     with pytest.raises(ValueError):
         parse_response("A:B:C")
@@ -16,20 +16,6 @@ def test_parser_response():
     with pytest.raises(ValueError):
         parse_response("garbage")
 
-
-@pytest.mark.parametrize(
-    "response, expected",
-    [
-        ("TEST:25", ("TEST", "25")),
-        ("   TEST:25   ", ("TEST", "25")),
-        ("TEST : 25", ("TEST", "25")),
-    ],
-)
-def test_valid_response(response, expected):
-    assert parse_response(response) == expected
-
-
-# OR
 
 @pytest.mark.parametrize(
     "response, expected",

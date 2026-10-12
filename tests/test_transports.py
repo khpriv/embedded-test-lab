@@ -25,13 +25,11 @@ def test_simulatortransport(command, expected_response):
     assert transport.send(command) == expected_response
 
 
-# new simulator has temperature 20
 def test_default_temperature():
     transport = SimulatorTransport()
     assert transport.send("GET_TEMP") == "TEMP:20"
 
 
-# setting temperature works
 def test_temperature_can_be_changed():
     transport = SimulatorTransport()
     temperature = 40
@@ -40,14 +38,12 @@ def test_temperature_can_be_changed():
     assert transport.send("GET_TEMP") == f"TEMP:{temperature}"
 
 
-# too-high temperature is rejected
 def test_temperature_over_limit_is_rejected():
     transport = SimulatorTransport()
     temperature = 100
     assert transport.send(f"SET_TEMP:{temperature}") == "ERR:OUT_OF_RANGE"
 
 
-# rejected change preserves old state
 def test_failed_temperature_change_doesnt_change_temperature():
     transport = SimulatorTransport()
     temperature = 100
@@ -56,13 +52,11 @@ def test_failed_temperature_change_doesnt_change_temperature():
     assert transport.send("GET_TEMP") == "TEMP:20"
 
 
-# unknown command returns error
 def test_unknown_command():
     transport = SimulatorTransport()
     assert transport.send("INVALID_COMMAND") == "ERR:UNKNOWN_COMMAND"
 
 
-# reset restores defaults
 def test_reset_restores_defaults():
     transport = SimulatorTransport()
 

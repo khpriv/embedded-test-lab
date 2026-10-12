@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import Mock
 from embedded_test_lab.device import Device, DeviceProtocolError
-from embedded_test_lab.transports import (SimulatorTransport, SerialTransport, FakeTransport, RetryingTransport, FlakyTransport)
+from embedded_test_lab.transports import (SimulatorTransport, SerialTransport, FakeTransport, RetryingTransport,
+                                          FlakyTransport)
 import logging
 
 
@@ -11,16 +12,6 @@ def device():
     device = Device(transport)
 
     yield device
-
-
-@pytest.fixture
-def device_teardown():
-    transport = SimulatorTransport()
-    device = Device(transport)
-
-    print("SETUP")
-    yield device
-    print("TEARDOWN")
 
 
 def test_default_temperature(device):
@@ -65,14 +56,12 @@ def test_get_temperature():
     assert device.get_temperature() == 25
 
 
-# GET_TEMP causes Device to send exactly "GET_TEMP"
 def test_faketransport_invalid_response_for_get_temp():
     device = Device(FakeTransport("GET_TEMP"))
     with pytest.raises(RuntimeError):
         device.get_temperature()
 
 
-# "STATUS:READY" returned for GET_TEMP raises RuntimeError
 def test_faketransport_returns_status():
     device = Device(FakeTransport("STATUS:READY"))
     with pytest.raises(RuntimeError):
@@ -202,6 +191,7 @@ def test_timeout_after_all_retries_via_mock(caplog):
         record.levelno == logging.ERROR
         for record in caplog.records
     )
+
 
 @pytest.mark.hardware
 def test_basic_device_smoke():

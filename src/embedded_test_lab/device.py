@@ -75,15 +75,3 @@ class Device:
         if response != "OK":
             raise RuntimeError(f"Failed to {command}: {response}")
 
-
-if __name__ == '__main__':
-    print(parse_response("       TEMP:  25    "))
-    print(parse_response("STATUS:READY"))
-
-    transport = SimulatorTransport()
-    device = Device(transport)
-    print(device.get_temperature())
-    print(device.set_temperature(35))
-    print(device.get_temperature())
-    print(device.reset())
-    print(device.get_temperature())

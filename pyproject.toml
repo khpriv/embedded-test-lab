@@ -6,6 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "embedded-test-lab"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = [
+    "pyserial>=3.5",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8",
+    "robotframework>=7",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -15,4 +24,5 @@ testpaths = ["tests"]
 markers = [
     "hardware: tests requiring a physical DUT"
 ]
+
 

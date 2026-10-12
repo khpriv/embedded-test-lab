@@ -48,31 +48,45 @@ class RetryingTransport:
                     )
                     raise
 
+    def close(self) -> None:
+        self.transport.close()
+
 
 class SerialTransport:
     def __init__(
-                    self,
-                    port: str,
-                    baudrate: int = 115200,
-                    timeout: float = 0.1,
-                ) -> None:
+            self,
+            port: str,
+            baudrate: int = 115200,
+            timeout: float = 0.1,
+    ) -> None:
+        self.port = port
+
         try:
             self.serial = serial.Serial(
-                                        port=port,
-                                        baudrate=baudrate,
-                                        timeout=timeout,
-                                        write_timeout=timeout,
-                                        )
+                port=port,
+                baudrate=baudrate,
+                timeout=timeout,
+                write_timeout=timeout,
+            )
         except serial.SerialException as exc:
+            logger.error("Failed to open serial port %s", port)
             raise CommunicationError(
-                f"Failed to open serial port {port!r}"
+                f"Failed to open serial port {port}"
             ) from exc
 
         self.serial.reset_input_buffer()
 
+        logger.info(
+            "Serial transport opened: port=%s baudrate=%d timeout=%.3fs",
+            port,
+            baudrate,
+            timeout,
+        )
+
     def close(self) -> None:
         if self.serial.is_open:
             self.serial.close()
+            logger.info("Serial transport closed: %s", self.port)
 
     def __enter__(self):
         return self
@@ -80,16 +94,36 @@ class SerialTransport:
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.close()
 
-
     def send(self, command: str) -> str:
+        logger.debug("TX: %r", command)
+
         command = command.strip()
-        self.serial.write((command + "\r\n").encode("ascii"))
-        response = self.serial.readline().decode("ascii").strip()
-        if response == b"":
+        try:
+            self.serial.write((command + "\r\n").encode("ascii"))
+            raw_response = self.serial.readline()
+        except serial.SerialException as exc:
+            logger.error(
+                "Serial communication failed while sending %r",
+                command,
+            )
+            raise CommunicationError(
+                f"Serial communication failed for {command!r}"
+            ) from exc
+
+        if not raw_response:
+            logger.error("RX timeout after TX: %r", command)
             raise TimeoutError(
                 f"No response to command {command!r}"
             )
+
+        response = raw_response.decode("ascii").strip()
+
+        logger.debug("RX: %r", response)
+
         return response
+
+    def clear_input_buffer(self) -> None:
+        self.serial.reset_input_buffer()
 
 
 class SimulatorTransport:

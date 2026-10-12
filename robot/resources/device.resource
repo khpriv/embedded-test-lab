@@ -1,3 +1,6 @@
+*** Settings ***
+Library         embedded_test_lab.robot_library.EmbeddedDeviceLibrary
+
 *** Variables ***
 ${DEFAULT_TEMPERATURE}  20
 ${DEFAULT_LIMIT}        80
@@ -13,3 +16,12 @@ Device Should Be In Default State
     Should Be Equal As Integers     ${temperature}  ${DEFAULT_TEMPERATURE}
     Should Be Equal As Integers     ${limit}        ${DEFAULT_LIMIT}
     Should Be Equal As Strings      ${status}       ${DEFAULT_STATUS}
+
+
+
+Recover After FIT
+    Run Keyword And Ignore Error
+    ...    Reset Device
+
+    Sleep  1s
+    Clear Input Buffer

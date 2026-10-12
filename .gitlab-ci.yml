@@ -1,0 +1,89 @@
+stages:
+  - test
+  - hil
+
+pytest:
+  stage: test
+  image: python:3.13-slim
+
+  before_script:
+    - python -m pip install --no-cache-dir ".[test]"
+
+  script:
+    - python -m pytest -m "not hardware" -v --junitxml=pytest-results.xml
+
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-results.xml
+    paths:
+      - pytest-results.xml
+
+
+robot_simulator:
+  stage: test
+  image: python:3.13-slim
+
+  before_script:
+    - python -m pip install --no-cache-dir ".[test]"
+
+  script:
+    - >
+      robot
+      -d robot_results
+      --xunit robot_results/xunit.xml
+      robot/smoke.robot
+      robot/negative.robot
+
+  artifacts:
+    when: always
+    reports:
+      junit: robot_results/xunit.xml
+    paths:
+      - robot_results/
+
+
+hil_nucleo:
+  stage: hil
+
+  tags:
+    - hil
+    - nucleo-f446
+
+  script:
+    - python -m venv .venv
+    - . .venv/bin/activate
+    - python -m pip install ".[test]"
+    - python -m pytest -m hardware -v --junitxml=hil-pytest.xml
+    - robot -d hil_robot_results robot/hardware.robot
+
+  artifacts:
+    when: always
+    reports:
+      junit: hil-pytest.xml
+    paths:
+      - hil-pytest.xml
+      - hil_robot_results/
+
+  when: manual
+
+
+hil_fault_injection:
+  stage: hil
+
+  tags:
+    - hil
+    - nucleo-f446
+
+  script:
+    - python -m venv .venv
+    - . .venv/bin/activate
+    - python -m pip install ".[test]"
+    - robot -d fit_results faultinjectiontests.robot
+
+  artifacts:
+    when: always
+    paths:
+      - fit_results/
+
+  when: manual
