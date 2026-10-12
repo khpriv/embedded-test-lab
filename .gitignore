@@ -1,13 +1,24 @@
+# Python
 .venv/
-.idea/
-robot_results
-.robotcode_cache/
 __pycache__/
 .pytest_cache/
 *.pyc
-output.xml
-log.html
-report.html
-src/embedded_test_lab.egg-info/
-test-results/
+*.egg-info/
+
+# IDE
+.idea/
+
+# Test output
+robot_results/
+hil_robot_results/
 fit_results/
+test-results/
+
+# STM32CubeIDE build output
+firmware/**/Debug/
+firmware/**/Release/
+firmware/**/build/
+
+# Robot Framework
+.robotcode_cache/
+
